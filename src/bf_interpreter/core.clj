@@ -6,6 +6,7 @@
 	(def memory-pointer (ref 0))	;; points at urrent memory location
 	(def memory (ref (byte-array 30)))	;; memory
 	(def program (vector))				;; program
+	(def brackets (ref {}))
 
 	(defn update-memory-pointer 
 		([] (dosync (alter memory-pointer + 1)))
@@ -30,14 +31,34 @@
 				(System/exit 0))
 			)
 		)
+	)
+
+	(defn find-brackets-pairs
+		"Finds pairs of brackets"
+		[]
+		(let [
+			end-pose 0
+			counter 1
+		]
+			(for [item (map-indexed vector program)]
+				(println "w")
+			)
 		)
+	)
+	
+	(defn real-parse
+		"Real parsing happens here."
+		[]
+		(println "real parsing")
 
-
+	)
+	
 	(defn parse
 		"Loops through chars and does something."
 		[]
-		(println program)
-		)
+		(find-brackets-pairs)
+		(real-parse)
+	)
 
 	(defn exit
 	"Wrong number of arguments. Requires path to file as first argument."
