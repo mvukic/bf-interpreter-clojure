@@ -45,14 +45,18 @@
 			memory[memory-pointer] += 1
 		"
 		[]
+		(println "Memory before: " (get memory @memory-pointer))
 		(def memory (update-in memory [@memory-pointer] inc))
+		(println "Memory after: " (get memory @memory-pointer))
 	)
 	(defn decrease-memory
 		"Decrease memory at location memory-pointer
 			memory[memory-pointer] -= 1
 		"
 		[]
+		(println "Memory before: " (get memory @memory-pointer))
 		(def memory (update-in memory [@memory-pointer] dec))
+		(println "Memory after: " (get memory @memory-pointer))
 	)
 
 	(defn read-file
@@ -106,10 +110,12 @@
 		(while (= running true)
 			(case (get program @program-pointer)
 				\> (do
+					(println "pomak ljevo")
 					(memory-pointer-inc)
 					(program-pointer-inc)
 				)
 				\< (do
+					(println "pomak desno")
 					(memory-pointer-dec)
 					(program-pointer-inc)
 				)
@@ -122,7 +128,8 @@
 					(program-pointer-inc)
 				)
 				\. (do
-					(def output (conj output (get memory @memory-pointer)))
+					(concat output [(get memory @memory-pointer)])
+					(println (get memory @memory-pointer))
 					(program-pointer-inc)
 				)
 				\, (println "Implement reading from stdin")
@@ -133,7 +140,7 @@
 				)
 				\] (if (not= (get memory @memory-pointer) 0)
 					(program-pointer-value (brackets @program-pointer))
-					(program-pointer-inc)	
+					(program-pointer-inc)
 				)
 			)
 			(if (>= @program-pointer (count program))
@@ -147,7 +154,7 @@
 	(defn print-result 
 		"Prints resulting memory."
 		[]
-		(println "END")
+		(println output)
 	)
 	
 	(defn parse
