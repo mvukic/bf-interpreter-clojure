@@ -2,13 +2,20 @@
 	(:gen-class))
 
 
-	(def program-pointer (atom 0)) 	;; points at current character in program
-	(def memory-pointer (atom 0))	;; points at urrent memory location
-	(def memory (ref (byte-array 30)))	;; memory
+	(def program-pointer (atom 0)) 		;; points at current character in program
+	(def memory-pointer (atom 0))		;; points at urrent memory location
+	(def memory (byte-array 30))		;; memory
 	(def program (vector))				;; program
-	(def brackets (atom {}))
+	(def brackets {})					;; map of pairs of brackets for loops
 	(def running (atom true))			;; will indicate if parsing should stop
 	(def output (vector))				;; Vector of resulting bytes (chars)
+	(def operators [ \[ \] \< \> \, \. \+ \- ]) ;; Vector of brrainfuck operators
+
+	(defn memory-at-pointer
+		"Get memory byte at memory-pointer"
+		[]
+		(get memory @memory-pointer)
+	)
 
 	(defn memory-pointer-inc
 		"Increase memory pointer by 1."
@@ -34,10 +41,15 @@
 		(swap! program-pointer dec)
 	)
 
-	(defn program-pointer-value
+	(defn program-pointer-set-value
 		"Set program pointer to value."
 		[value]
 		(reset! program-pointer value)
+	)
+	(defn memory-set-value
+		"Sets memory location at memory-pointer to value."
+		[value]
+		(aset-byte memory @memory-pointer value)
 	)
 
 	(defn increase-memory
@@ -45,20 +57,31 @@
 			memory[memory-pointer] += 1
 		"
 		[]
-		(println "Memory before: " (get memory @memory-pointer))
-		(def memory (update-in memory [@memory-pointer] inc))
-		(println "Memory after: " (get memory @memory-pointer))
+		(aset-byte memory @memory-pointer (+ (memory-at-pointer) 1))
 	)
 	(defn decrease-memory
 		"Decrease memory at location memory-pointer
 			memory[memory-pointer] -= 1
 		"
 		[]
-		(println "Memory before: " (get memory @memory-pointer))
-		(def memory (update-in memory [@memory-pointer] dec))
-		(println "Memory after: " (get memory @memory-pointer))
+		(aset-byte memory @memory-pointer (- (memory-at-pointer) 1))
 	)
 
+	(defn save-to-output
+		"Saves char at memory pointer to output."
+		[]
+		(def output (conj output (memory-at-pointer)))
+	)
+
+	(defn filter-chars
+		"Saves only operator characters."
+		[ch]
+		(let [c (char ch)]
+			(if (some #(= c %) operators) 
+				(def program (conj program c))
+			)
+		)
+	)
 	(defn read-file
 		"Opens file and reads chars to vector."
 		[filename]
@@ -67,7 +90,7 @@
 				(loop [c (.read reader)] 
 				(if (not= c -1)
 					(do 
-						(def program (conj program (char c))) ;; save chars as actual chars
+						(filter-chars c)
 						(recur (.read reader))
 					))
 				)
@@ -84,7 +107,10 @@
 		[]
 		(doseq [[index item] (map-indexed vector program)]
 			(if (= item \[) 
-				(let [ end-pos (atom index) counter (atom 1)]
+				(let [ 
+					end-pos (atom index) 
+					counter (atom 1)
+				]
 				(while (> @counter 0)
 					(do
 						(swap! end-pos inc)
@@ -97,8 +123,9 @@
 				;; Save bracket pair
 				;; Index of opening bracket is key
 				;; Index of closing key is value
-				(swap! brackets assoc index @end-pos)
-				(swap! brackets assoc @end-pos index)
+				;; And reverse
+				(def brackets (assoc brackets index @end-pos))
+				(def brackets (assoc brackets @end-pos index))
 				)
 			)
 		)
@@ -107,15 +134,14 @@
 	(defn real-parse
 		"Real parsing happens here."
 		[]
-		(while (= running true)
-			(case (get program @program-pointer)
+		(while @running
+			(let [current-oper (get program @program-pointer)]
+			(case current-oper
 				\> (do
-					(println "pomak ljevo")
 					(memory-pointer-inc)
 					(program-pointer-inc)
 				)
 				\< (do
-					(println "pomak desno")
 					(memory-pointer-dec)
 					(program-pointer-inc)
 				)
@@ -128,33 +154,47 @@
 					(program-pointer-inc)
 				)
 				\. (do
-					(concat output [(get memory @memory-pointer)])
-					(println (get memory @memory-pointer))
+					(save-to-output)
+					(println (char (last output)))
 					(program-pointer-inc)
 				)
-				\, (println "Implement reading from stdin")
+				\, (do
+					(println "Value must be character. Will be represented as byte. (0-255)")
+					(println "Enter value: ")
+					(memory-set-value (Integer. (read-string (read-line))))
+					(program-pointer-inc)
+				)
 				\[ (do
-					(if (= (get memory @memory-pointer) 0)
-						(program-pointer-value (brackets @program-pointer)))
+					(if (= (memory-at-pointer) 0)
+						(program-pointer-set-value (brackets @program-pointer)))
 					(program-pointer-inc)
 				)
-				\] (if (not= (get memory @memory-pointer) 0)
-					(program-pointer-value (brackets @program-pointer))
+				\] (if (not= (memory-at-pointer) 0)
+					(program-pointer-set-value (brackets @program-pointer))
 					(program-pointer-inc)
 				)
+				() ;; Ignore avery other letter.
 			)
-			(if (>= @program-pointer (count program))
-				(swap! running false)
+			(if (= @program-pointer (count program))
+				(reset! running false)
 			)
-			
+				
+			)
 		)
-
+	)
+	
+	(defn byte-array-into-string
+		"Turns byte array into string."
+		[byte-array]
+		(apply str (map #(char (bit-and % 255)) byte-array))
 	)
 
 	(defn print-result 
 		"Prints resulting memory."
 		[]
-		(println output)
+		(println "Memory: " (vec memory))
+		(println "Output Vector: " (vec output))
+		(println "Output String: " (byte-array-into-string output))
 	)
 	
 	(defn parse
@@ -165,20 +205,22 @@
 	)
 
 	(defn exit
-	"Wrong number of arguments. Requires path to file as first argument."
-	[]
-	(println "Wrong number of arguments!")
+		"Wrong number of arguments. Requires path to file as first argument."
+		[]
+		(println "Wrong number of arguments!")
+		(System/exit 1)
 	)
 
 
 	(defn -main
-	"Main brainfuck interpreter function."
-	[& args] 
-	(if (= 1 (count args)) 
-		(do 
-			(read-file (first args)) 
-			(parse)
-			(print-result)
-		) 
-		(exit))
+		"Main brainfuck interpreter function."
+		[& args]
+		(if (= 1 (count args))
+			(do
+				(read-file (first args))
+				(parse)
+				(print-result)
+			) 
+			(exit)
+		)
 	)
