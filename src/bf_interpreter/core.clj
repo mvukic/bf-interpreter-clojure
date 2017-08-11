@@ -159,9 +159,10 @@
 					(program-pointer-inc)
 				)
 				\, (do
-					(println "Value must be character. Will be represented as byte. (0-255)")
-					(println "Enter value: ")
-					(memory-set-value (Integer. (read-string (read-line))))
+					(println "Enter value: ()")
+					(let [ input (read-string (read-line))]
+						(memory-set-value (first (seq (char-array (str input)))))
+					)
 					(program-pointer-inc)
 				)
 				\[ (do
@@ -196,7 +197,7 @@
 		(println "Output Vector: " (vec output))
 		(println "Output String: " (byte-array-into-string output))
 	)
-	
+
 	(defn parse
 		"Loops through chars and does something."
 		[]

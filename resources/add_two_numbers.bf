@@ -8,4 +8,5 @@
     -       ; decrement p2
 ]           ; we exit the loop when the last cell is empty
 <       ; go back to p1
+------------------------------------------------ ; subtract 48 (ie ASCII char code of '0')
 .       ; print p1
